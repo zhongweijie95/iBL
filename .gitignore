@@ -1,0 +1,4 @@
+.idea/**
+build/**
+middlewares/**
+AT32F403AxG_FLASH.ld
