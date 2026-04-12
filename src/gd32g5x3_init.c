@@ -296,6 +296,60 @@ void msd_fwdgt_init(void)
     /* user code [fwdgt_init local 1] end */
 }
 
+/*!
+    \brief      PMU initialization function
+    \param[in]  none
+    \param[out] none
+    \retval     none
+*/
+void msd_pmu_init(void)
+{
+    /* user code [pmu_init local 0] begin */
+
+    /* user code [pmu_init local 0] end */
+
+    rcu_periph_clock_enable(RCU_PMU);
+
+    pmu_lvd_disable();
+    pmu_backup_write_enable();
+    pmu_ldo_output_select(PMU_LDOVS_1_1V);
+    pmu_deepsleep_voltage(PMU_DSLPVS_2);
+    pmu_avd_disable();
+    pmu_ovd_disable();
+    pmu_uvd_disable();
+    pmu_vbat_temp_moniter_disable();
+    pmu_vbat_charging_disable();
+    pmu_wakeup_pin_disable(PMU_WAKEUP_PIN0);
+    pmu_wakeup_pin_disable(PMU_WAKEUP_PIN1);
+    pmu_wakeup_pin_disable(PMU_WAKEUP_PIN2);
+    pmu_wakeup_pin_disable(PMU_WAKEUP_PIN3);
+    pmu_wakeup_pin_disable(PMU_WAKEUP_PIN4);
+
+    /* user code [pmu_init local 1] begin */
+
+    /* user code [pmu_init local 1] end */
+}
+
+/*!
+    \brief      PMU deinitialization function
+    \param[in]  none
+    \param[out] none
+    \retval     none
+*/
+void msd_pmu_deinit(void)
+{
+    /* user code [pmu_deinit local 0] begin */
+
+    /* user code [pmu_deinit local 0] end */
+    pmu_deinit();
+
+    rcu_periph_clock_disable(RCU_PMU);
+
+    /* user code [pmu_deinit local 1] begin */
+
+    /* user code [pmu_deinit local 1] end */
+}
+
 /* user code [Public Functions Implementations] begin */
 
 /* user code [Public Functions Implementations] end */

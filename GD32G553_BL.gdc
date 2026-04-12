@@ -6,6 +6,7 @@ FwlibType=Standard
 PINOUT.PERIPHERAL.NODE.FWDGT.FWDGT Enable=true
 PINOUT.PERIPHERAL.NODE.RCU.High Speed Crystal Oscillator (HXTAL)=Crystal/Ceramic Resonator
 PINOUT.PERIPHERAL.NODE.RCU.Internal 32K RC Oscillator (IRC32K)=Enable
+PINOUT.PERIPHERAL.NODE.PMU.PMU Enable=true
 PINOUT.PERIPHERAL.NODE.CAN0.CAN Enable=true
 
 PIN.PF0.Signal=OSCIN
@@ -32,6 +33,7 @@ RCU.PLLSEL=PLLSEL_1
 RCU.RTCSRC=RTCSRC_11
 
 [<PeriConfigContent>]
+GENERALCONGIG.PMU.PMUConfiguration##BackUpWrite=Enable
 
 [<DMAConfigContent>]
 

@@ -73,6 +73,8 @@ void msd_gpio_deinit(void);
 void msd_can0_init(void);
 void msd_can0_deinit(void);
 void msd_fwdgt_init(void);
+void msd_pmu_init(void);
+void msd_pmu_deinit(void);
 
 /* user code [Public Functions] begin */
 

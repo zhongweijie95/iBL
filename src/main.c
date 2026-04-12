@@ -81,6 +81,7 @@ int main(void)
     /* user code [local 0] end */
 
     msd_system_init();
+    msd_pmu_init();
     msd_clock_init();
 
     /* user code [local 1] begin */

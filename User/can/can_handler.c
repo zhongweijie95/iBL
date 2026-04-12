@@ -21,7 +21,7 @@ void InitCAN(uint32_t hcan)
 
     can_param.internal_counter_source = CAN_TIMER_SOURCE_BIT_CLOCK;
     can_param.self_reception = DISABLE;
-    can_param.mb_tx_order = CAN_TX_HIGH_PRIORITY_MB_FIRST;
+    can_param.mb_tx_order = CAN_TX_LOW_NUM_MB_FIRST;
     can_param.mb_tx_abort_enable = ENABLE;
     can_param.local_priority_enable = DISABLE;
     can_param.mb_rx_ide_rtr_type = CAN_IDE_RTR_FILTERED;
