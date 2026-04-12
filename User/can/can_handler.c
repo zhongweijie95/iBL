@@ -1,83 +1,102 @@
 #include "can_handler.h"
+#include <stdbool.h>
 
 kfifo_static_t can_rx_fifo;
 
-void InitCAN(can_type *hcan)
+#ifdef GD32G5X3
+// Classic CAN mode
+uint32_t FILTER_FORMAT_AND_NUMBER = CAN_RXFIFO_FILTER_A_NUM_8;
+uint8_t FIRST_AVAIL_TX_MAILBOX_IDX = 8;
+uint8_t LAST_AVAIL_TX_MAILBOX_IDX = 31;
+#endif
+
+void InitCAN(uint32_t hcan)
 {
     kfifo_init_s(&can_rx_fifo, KFIFO_STATIC_BUF_SIZE);
 
-    can_reset(hcan);
+    can_deinit(hcan);
 
-    can_base_type can_base_struct =
-    {
-        .mode_selection = CAN_MODE_COMMUNICATE,
-        .ttc_enable = FALSE,
-        .aebo_enable = TRUE,   // Automatic exit bus-off
-        .aed_enable = TRUE,    // Automatic exit from doze(hibernation)
-        .prsf_enable = FALSE,  // PROHIBIT retransmission when sending fails (disable == Auto Retransmission)
-        .mdrsel_selection = CAN_DISCARDING_FIRST_RECEIVED,
-        .mmssr_selection = CAN_SENDING_BY_REQUEST
-    };
-    can_base_init(hcan, &can_base_struct);
+    can_parameter_struct can_param;
+    can_struct_para_init(CAN_INIT_STRUCT, &can_param);
 
-    can_baudrate_type can_baudrate_struct;
-    can_baudrate_default_para_init(&can_baudrate_struct);
+    can_param.internal_counter_source = CAN_TIMER_SOURCE_BIT_CLOCK;
+    can_param.self_reception = DISABLE;
+    can_param.mb_tx_order = CAN_TX_HIGH_PRIORITY_MB_FIRST;
+    can_param.mb_tx_abort_enable = ENABLE;
+    can_param.local_priority_enable = DISABLE;
+    can_param.mb_rx_ide_rtr_type = CAN_IDE_RTR_FILTERED;
+    can_param.mb_remote_frame = CAN_STORE_REMOTE_REQUEST_FRAME;
+    can_param.rx_private_filter_queue_enable = ENABLE; // RPFQEN = 1, we will have separate mask & id for each filter
+    can_param.edge_filter_enable = ENABLE; // EFDIS = 0, See User Manual P1321
+    can_param.protocol_exception_enable = DISABLE;
+    can_param.rx_filter_order = CAN_RX_FILTER_ORDER_FIFO_FIRST; // Rx FIFO first (mailbox not used)
+    can_param.memory_size = CAN_MEMSIZE_32_UNIT; // 512 BYTES
+    can_param.mb_public_filter = 0U;
 
-    // Using baudcal.exe: Device = CANFDNET_TCP
-#ifdef AT32F403Axx // CAN bus on APB1 @ 120 MHz, rsaw(sync jump width) [1,4], bts1(tseg1) [1,16], bts2(tseg2) [1,8]
-    can_baudrate_struct.baudrate_div = 10;        // BRP
-    can_baudrate_struct.rsaw_size = CAN_RSAW_3TQ; // SJW
-    can_baudrate_struct.bts1_size = CAN_BTS1_8TQ; // TSEG1
-    can_baudrate_struct.bts2_size = CAN_BTS2_3TQ; // TSEG2
+#ifdef GD32G5X3
+    can_param.prescaler = 6U; // BRP
+    can_param.resync_jump_width = 9U; // SJW
+    can_param.prop_time_segment = 13U;
+    can_param.time_segment_1 = 13U; // time_segment_1 + pts = TSEG1
+    can_param.time_segment_2 = 9U;
+#else
+#warning "CAN baudrate calculation result not set for current platform!"
 #endif
-    can_baudrate_set(hcan, &can_baudrate_struct);
 
-    can_filter_init_type can_filter_init_struct =
+    can_init(hcan, &can_param);
+
+    can_auto_busoff_recovery_enable(hcan);
+    can_time_sync_disable(hcan);
+    can_bsp_mode_config(hcan, CAN_BSP_MODE_THREE_SAMPLES);
+    can_bsp_syn_config(hcan, CAN_BSP_TWO_STAGES_SYN);
+
+    // Rx FIFO & Filter settings
+    can_fifo_parameter_struct can_fifo_param;
+    can_struct_para_init(CAN_FIFO_INIT_STRUCT, &can_fifo_param);
+
+    can_fifo_param.dma_enable = DISABLE;
+    can_fifo_param.filter_format_and_number = CAN_RXFIFO_FILTER_A_NUM_8; // Maximum number of 8 filters
+    can_fifo_param.fifo_public_filter = 0; // use private mask
+
+    can_rx_fifo_config(hcan, &can_fifo_param);
+
+    /* Mailbox RAM (512 bytes) split in Classic CAN Mode:
+     * each mailbox is 16bytes, with a total of 32
+     * Rx FIFO: [0:5]
+     * FILTER (8, each 4 bytes -> 2 mailbox): [6:7]
+     * Tx Mailbox (usable): [8:31] with a total of 24 mailbox.
+     */
+
+    // initialize tx mailbox
+    for(uint8_t i = FIRST_AVAIL_TX_MAILBOX_IDX; i <= LAST_AVAIL_TX_MAILBOX_IDX; i++)
     {
-        .filter_activate_enable = TRUE,
-        .filter_mode = CAN_FILTER_MODE_ID_MASK,
-        .filter_fifo = CAN_FILTER_FIFO0,
-        .filter_number = 0,
-        .filter_bit = CAN_FILTER_32BIT,
-        .filter_id_high = 0x0000,
-        .filter_id_low = 0x0000,
-        .filter_mask_high = 0x0000,
-        .filter_mask_low = 0x0000
-    };
+        can_mailbox_transmit_inactive(hcan, i);
+        CAN_STAT(hcan) = STAT_MS(i);
+        (void)(CAN_TIMER(hcan));
+    }
 
-    can_filter_init(hcan, &can_filter_init_struct);
+    can_interrupt_enable(hcan, CAN_INT_FIFO_AVAILABLE);
 
-    can_interrupt_enable(hcan, CAN_RF0MIEN_INT | CAN_ETRIEN_INT | CAN_EOIEN_INT, TRUE);
+    can_operation_mode_enter(hcan, CAN_NORMAL_MODE);
 }
 
-void OnCANIRQ(can_type *hcan)
+void OnCANIRQ(uint32_t hcan)
 {
-    // if(can_interrupt_flag_get(hcan, CAN_ETR_FLAG) != RESET) // error irq
-    if(hcan->ests_bit.etr)
+    while(can_interrupt_flag_get(hcan, CAN_INT_FLAG_FIFO_AVAILABLE))
     {
-        // can_flag_clear(hcan, CAN_ETR_FLAG);
-        hcan->msts = CAN_MSTS_EOIF_VAL;
-        hcan->ests = 0;
-    }
-    // else if(can_interrupt_flag_get(hcan, CAN_RF0MN_FLAG) != RESET)
-    else if(hcan->rf0_bit.rf0mn)
-    {
-        can_rx_message_type rx_msg = {0};
-        can_message_receive(hcan, CAN_RX_FIFO0, &rx_msg);
-
-        if(rx_msg.id_type != CAN_ID_EXTENDED || rx_msg.frame_type == CAN_TFT_REMOTE) return;
-
-        CANMessage dt_can_msg = {0};
-        dt_can_msg.is_ext = rx_msg.id_type == CAN_ID_EXTENDED;
-        dt_can_msg.cob_id = dt_can_msg.is_ext ? rx_msg.extended_id : rx_msg.standard_id;
-        dt_can_msg.is_rtr = rx_msg.frame_type == CAN_TFT_REMOTE;
-        dt_can_msg.len = (uint8_t)rx_msg.dlc;
-        if(dt_can_msg.len > sizeof(dt_can_msg.data)) dt_can_msg.len = sizeof(dt_can_msg.data);
-        memcpy(dt_can_msg.data, rx_msg.data, dt_can_msg.len);
-        // ProcessIncomingMsg(dt_can_msg);
-
-        // send to kfifo
-        kfifo_put_s(&can_rx_fifo, (char*)&dt_can_msg, sizeof(dt_can_msg));
+        can_rx_fifo_struct rx_msg;
+        can_rx_fifo_read(hcan, &rx_msg);
+        CANMessage msg = {0};
+        msg.is_ext = (rx_msg.ide != 0);
+        msg.cob_id = rx_msg.id;
+        msg.is_rtr = (rx_msg.rtr != 0);
+        msg.len = msg.is_rtr ? 0 : rx_msg.dlc;
+        if(msg.len > sizeof(msg.data)) msg.len = sizeof(msg.data);
+        memcpy(msg.data, rx_msg.data, msg.len);
+        // ProcessIncomingMsg(msg);
+        kfifo_put_s(&can_rx_fifo, (char*)&msg, sizeof(msg));
+        // can_interrupt_flag_clear(hcan, CAN_INT_FLAG_FIFO_AVAILABLE);
+        (void)CAN_TIMER(hcan);
     }
 }
 
@@ -93,30 +112,34 @@ uint8_t GetCANRxFIFO(CANMessage* dst)
     return len == sizeof(CANMessage);
 }
 
-FuncRetCode TransmitCANMessage(can_type* hcan, CANMessage* msg)
+bool IsMailboxEmpty(uint32_t hcan, const uint8_t mb)
 {
-    can_tx_message_type tx_msg = {0};
-    if(msg->is_ext)
+    if(CAN_STAT(hcan) & STAT_MS(mb))
     {
-        tx_msg.standard_id = 0;
-        tx_msg.extended_id = msg->cob_id;
-        tx_msg.id_type = CAN_ID_EXTENDED;
+        CAN_STAT(hcan) = STAT_MS(mb);
+        (void)CAN_TIMER(hcan);
     }
-    else
-    {
-        tx_msg.standard_id = (uint16_t)msg->cob_id;
-        tx_msg.extended_id = 0;
-        tx_msg.id_type = CAN_ID_STANDARD;
-    }
-    tx_msg.frame_type = msg->is_rtr ? CAN_TFT_REMOTE : CAN_TFT_DATA;
-    tx_msg.dlc = msg->len;
-    memcpy(tx_msg.data, msg->data, msg->len);
-    const uint8_t selected_mailbox = can_message_transmit(hcan, &tx_msg);
+    const uint32_t status_code = can_mailbox_code_get(hcan, mb);
+    if(status_code == CAN_MB_TX_STATUS_INACTIVE || status_code == CAN_MB_TX_STATUS_ABORT) return true;
+    return false;
+}
 
-    if(selected_mailbox == CAN_TX_STATUS_NO_EMPTY)
+FuncRetCode TransmitCANMessage(uint32_t hcan, CANMessage* msg)
+{
+    for(uint8_t i = FIRST_AVAIL_TX_MAILBOX_IDX; i <= LAST_AVAIL_TX_MAILBOX_IDX; i++)
     {
-        return BUFFER_FULL;
+        if(!IsMailboxEmpty(hcan, i)) continue;
+        can_mailbox_descriptor_struct desc;
+        can_struct_para_init(CAN_MDSC_STRUCT, &desc);
+        desc.ide = msg->is_ext;
+        desc.rtr = msg->is_rtr;
+        desc.id = msg->cob_id;
+        desc.prio = 0U;
+        desc.data_bytes = msg->is_rtr ? 0U : msg->len;
+        desc.code = CAN_MB_TX_STATUS_DATA;
+        memcpy(desc.data, msg->data, desc.data_bytes);
+        can_mailbox_config(hcan, i, &desc);
+        return OK;
     }
-
-    return OK;
+    return BUFFER_FULL;
 }

@@ -1,0 +1,14 @@
+eclipse.preferences.version=1
+ldfile.code.location=FLASH
+ldfile.envm.Origin=
+ldfile.envm.length=
+ldfile.flash.Origin=0x08000000
+ldfile.flash.length=512
+ldfile.ram.Origin=0x20000000
+ldfile.ram.length=128
+ldfile.src.path=C\:\\Users\\vip99\\Documents\\Coding\\iFOC-v3\\ThirdParty\\GD32EB_v1.5.8_Rel\\GD32EB\\plugins\\com.gigadevice.resources_1.0.0.202603121632\\Firmware\\GD32G5x3\\gd32g5x3_flash.ld
+ldfile.stack.Origin=0x20001000
+ldfile.stack.length=1
+ldfile.target.path=C\:\\Users\\vip99\\Documents\\Coding\\GD32_Projects\\GD32G553_BL\\ldscripts\\gd32g5x3_flash.ld
+mcu.target=GD32G553CEU7
+mcu.target.svd=GD32G5x3.svd

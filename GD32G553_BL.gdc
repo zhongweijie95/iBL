@@ -1,0 +1,82 @@
+FileVersion=1
+MCUPartNo=GD32G553CEU7
+FwlibType=Standard
+
+[<PeriandPinContent>]
+PINOUT.PERIPHERAL.NODE.FWDGT.FWDGT Enable=true
+PINOUT.PERIPHERAL.NODE.RCU.High Speed Crystal Oscillator (HXTAL)=Crystal/Ceramic Resonator
+PINOUT.PERIPHERAL.NODE.RCU.Internal 32K RC Oscillator (IRC32K)=Enable
+PINOUT.PERIPHERAL.NODE.CAN0.CAN Enable=true
+
+PIN.PF0.Signal=OSCIN
+PIN.PF0.Type=AUTOMATIC
+PIN.PF0.Peri=RCU
+PIN.PF1.Signal=OSCOUT
+PIN.PF1.Type=AUTOMATIC
+PIN.PF1.Peri=RCU
+PIN.PA11.Signal=CAN0_RX
+PIN.PA11.Type=AUTOMATIC
+PIN.PA11.Peri=CAN0
+PIN.PA12.Signal=CAN0_TX
+PIN.PA12.Type=AUTOMATIC
+PIN.PA12.Peri=CAN0
+PIN.PB9.Signal=GPIO_Output
+PIN.PB9.Type=MANUAL
+PIN.PB9.Peri=GPIO
+
+[<ClockContent>]
+RCU.HXTAL=8
+RCU.SCS=SCS_11
+RCU.PLLN=*54
+RCU.PLLSEL=PLLSEL_1
+RCU.RTCSRC=RTCSRC_11
+
+[<PeriConfigContent>]
+
+[<DMAConfigContent>]
+
+[<GPIOConfigContent>]
+GPIOCONFIG.CONFIGINFO.GPIO.PB9.OutputLevel=High
+GPIOCONFIG.CONFIGINFO.GPIO.PB9.MaxSpeed=12MHz
+GPIOCONFIG.CONFIGINFO.GPIO.PB9.PullUpDown=Pull-Up
+GPIOCONFIG.CONFIGINFO.GPIO.PB9.UserLabel=CAN_RES_TRIG
+GPIOCONFIG.CONFIGINFO.GPIO.PB9.ModifyFlag=TRUE
+
+[<NVICConfigContent>]
+NVIC.Configuration##PriorityGroup=4 Bits For Preemption Priority 0 Bit For Sub Priority
+NVIC.Non Maskable Interrupt##Enabled=TRUE
+NVIC.Non Maskable Interrupt##PreemptionPriority=0
+NVIC.Non Maskable Interrupt##SubPriority=0
+NVIC.Hardfault Interrupt##Enabled=TRUE
+NVIC.Hardfault Interrupt##PreemptionPriority=0
+NVIC.Hardfault Interrupt##SubPriority=0
+NVIC.Memory Management Interrupt##Enabled=TRUE
+NVIC.Memory Management Interrupt##PreemptionPriority=0
+NVIC.Memory Management Interrupt##SubPriority=0
+NVIC.Pre-fetch Fault, Memory Access Fault##Enabled=TRUE
+NVIC.Pre-fetch Fault, Memory Access Fault##PreemptionPriority=0
+NVIC.Pre-fetch Fault, Memory Access Fault##SubPriority=0
+NVIC.Undefined Instruction Or Illegal State##Enabled=TRUE
+NVIC.Undefined Instruction Or Illegal State##PreemptionPriority=0
+NVIC.Undefined Instruction Or Illegal State##SubPriority=0
+NVIC.System Service Call Via SWI Instruction##Enabled=TRUE
+NVIC.System Service Call Via SWI Instruction##PreemptionPriority=0
+NVIC.System Service Call Via SWI Instruction##SubPriority=0
+NVIC.Debug Monitor Interrupt##Enabled=TRUE
+NVIC.Debug Monitor Interrupt##PreemptionPriority=0
+NVIC.Debug Monitor Interrupt##SubPriority=0
+NVIC.Pendable Request For System Service##Enabled=TRUE
+NVIC.Pendable Request For System Service##PreemptionPriority=0
+NVIC.Pendable Request For System Service##SubPriority=0
+NVIC.System Tick Timer##Enabled=TRUE
+NVIC.System Tick Timer##PreemptionPriority=15
+NVIC.System Tick Timer##SubPriority=0
+NVIC.CAN0 Interrupt For Message Buffer##Enabled=TRUE
+NVIC.CAN0 Interrupt For Message Buffer##PreemptionPriority=0
+NVIC.CAN0 Interrupt For Message Buffer##SubPriority=0
+
+[<ProjectManagerSettingContent>]
+ProjectManagerSetting.OverwriteFirmwareLib=true
+ProjectManagerSetting.OverwriteLDFile=false
+ProjectManagerSetting.OverwriteStartupFile=false
+ProjectManagerSetting.OverwriteCFGFile=false

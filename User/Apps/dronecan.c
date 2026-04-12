@@ -14,6 +14,10 @@
 
 // uint8_t desired_node_id = 0; // can be only set once, DEPRECATED
 
+#ifndef IFOC_NODE_NAME
+#define IFOC_NODE_NAME ("com.ifoc.bootloader")
+#endif
+
 uint8_t reboot_flag = 0;
 
 struct uavcan_protocol_NodeStatus node_status;
@@ -37,7 +41,7 @@ struct
 fw_update_struct_t fw_update;
 
 static CanardInstance canard;
-static uint8_t memory_pool[1024];
+static uint8_t memory_pool[4096];
 
 void ProcessTransfer(CanardInstance* ins, CanardRxTransfer* transfer);
 bool ShouldAccept(const CanardInstance* ins, uint64_t* out,
@@ -103,7 +107,7 @@ void ProcessDroneCAN_RT(void)
         tx_message.len = tx_frame->data_len;
         if(tx_message.len > sizeof(tx_message.data)) tx_message.len = sizeof(tx_message.data);
         memcpy(tx_message.data, tx_frame->data, tx_message.len);
-        const FuncRetCode ret = TransmitCANMessage(CAN1, &tx_message);
+        const FuncRetCode ret = TransmitCANMessage(CAN0, &tx_message);
         if(ret == OK)
         {
             canardPopTxQueue(&canard);

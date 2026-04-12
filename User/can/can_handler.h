@@ -5,12 +5,12 @@
 #include "can_message.h"
 #include "func_ret_code.h"
 
-void InitCAN(can_type *hcan);
+void InitCAN(uint32_t hcan);
 
-void OnCANIRQ(can_type *hcan);
+void OnCANIRQ(uint32_t hcan);
 
 uint8_t PeekCANRxFIFO(void);
 
 uint8_t GetCANRxFIFO(CANMessage* dst);
 
-FuncRetCode TransmitCANMessage(can_type *hcan, CANMessage* msg);
+FuncRetCode TransmitCANMessage(uint32_t hcan, CANMessage* msg);

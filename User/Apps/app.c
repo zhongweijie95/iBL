@@ -1,7 +1,7 @@
 #include "global_include.h"
 #include "dronecan.h"
 #include "can_handler.h"
-#include "at32wk_nvm_storage.h"
+#include "gd32_nvm_storage.h"
 #include "bkp.h"
 
 void jump_to_app(void);
@@ -47,7 +47,7 @@ FuncRetCode OnFWUpdateReceiveBlock(uint32_t offset, uint8_t* data, uint32_t len)
             len -= remaining_bytes;
         }
         // now app_buffer_offset == sizeof(buffer), remaining_bytes == 0, buffer full, execute erase + program
-        const uint32_t erasing_sector = GetSector(current_write_address); // relative sector
+        const uint32_t erasing_sector = GetPage(current_write_address); // relative sector
         if(last_erased_sector != erasing_sector)
         {
             Erase(current_write_address, ceil_to_n_divisible(sizeof(app_buffer), FLASH_WRITE_GRAN_BITS / 8));
@@ -64,7 +64,7 @@ FuncRetCode OnFWUpdateReceiveBlock(uint32_t offset, uint8_t* data, uint32_t len)
 FuncRetCode OnFWUpdateFinished(void)
 {
     if(app_buffer_offset == 0) goto cleanup;
-    const uint32_t erasing_sector = GetSector(current_write_address); // relative sector
+    const uint32_t erasing_sector = GetPage(current_write_address); // relative sector
     if(last_erased_sector != erasing_sector)
     {
         Erase(current_write_address, ceil_to_n_divisible(app_buffer_offset, FLASH_WRITE_GRAN_BITS / 8));
@@ -84,7 +84,7 @@ cleanup:
     bkp_struct.flags.bit.app_init_success = false;
     bkp_struct.controllable_hardfault_count = 0;
     write_bpr(&bkp_struct);
-    CRM->ctrlsts_bit.rstfc = 1; // clear reset flag
+    RCU_RSTSCK |= RCU_RSTSCK_RSTFC; // clear reset flag
 
     jump_to_app(); // execute jump
     return OK;
@@ -99,7 +99,7 @@ FuncRetCode OnRestartNode(void)
     bkp_struct.flags.bit.app_init_success = false;
     bkp_struct.controllable_hardfault_count = 0;
     write_bpr(&bkp_struct);
-    CRM->ctrlsts_bit.rstfc = 1; // clear reset flag
+    RCU_RSTSCK |= RCU_RSTSCK_RSTFC; // clear reset flag
 
     jump_to_app();
     return OK;
@@ -107,23 +107,36 @@ FuncRetCode OnRestartNode(void)
 
 void app_main(void)
 {
-    debug_periph_mode_set(DEBUG_TMR1_PAUSE, TRUE);
-    debug_periph_mode_set(DEBUG_WDT_PAUSE, TRUE);
-    rtc_counter_set(0);
+    /* setup systick timer for 10000Hz interrupts */
+    if (SysTick_Config(SystemCoreClock / 10000U))
+    {
+        /* capture error */
+        while (1);
+    }
 
-    wdt_register_write_enable(TRUE);
-    wdt_enable(); // watchdog enable!!
-    wdt_register_write_enable(FALSE);
+    SCB->CFSR = 0x00000000; // Clear previous CFSR flag
+    dbg_periph_disable(DBG_TIMER0_HOLD);
+    dbg_periph_disable(DBG_FWDGT_HOLD);
+    dbg_periph_disable(DBG_WWDGT_HOLD);
+
+    fwdgt_write_enable();
+    fwdgt_prescaler_value_config(FWDGT_PSC_DIV4);
+    fwdgt_reload_value_config(4095);
+    fwdgt_window_value_config(4095);
+    fwdgt_write_disable();
+
+    fwdgt_enable();
+    fwdgt_counter_reload();
 
     // read CRM_CTRLSTS, to determine reset flags
     reset_flag.reg = 0;
-    if(CRM->ctrlsts_bit.lprstf) reset_flag.bit.low_power_reset = 1;
-    if(CRM->ctrlsts_bit.wwdtrstf) reset_flag.bit.window_wdt_reset = 1;
-    if(CRM->ctrlsts_bit.wdtrstf) reset_flag.bit.wdt_reset = 1;
-    if(CRM->ctrlsts_bit.swrstf) reset_flag.bit.software_reset = 1;
-    if(CRM->ctrlsts_bit.porrstf) reset_flag.bit.power_on_reset = 1;
-    if(CRM->ctrlsts_bit.nrstf) reset_flag.bit.nrst_reset = 1;
-    CRM->ctrlsts_bit.rstfc = 1; // clear reset flag
+    if(RCU_RSTSCK & RCU_RSTSCK_LPRSTF) reset_flag.bit.low_power_reset = 1;
+    if(RCU_RSTSCK & RCU_RSTSCK_WWDGTRSTF) reset_flag.bit.window_wdt_reset = 1;
+    if(RCU_RSTSCK & RCU_RSTSCK_FWDGTRSTF) reset_flag.bit.wdt_reset = 1;
+    if(RCU_RSTSCK & RCU_RSTSCK_SWRSTF) reset_flag.bit.software_reset = 1;
+    if(RCU_RSTSCK & RCU_RSTSCK_PORRSTF) reset_flag.bit.power_on_reset = 1;
+    if(RCU_RSTSCK & RCU_RSTSCK_EPRSTF) reset_flag.bit.nrst_reset = 1;
+    RCU_RSTSCK |= RCU_RSTSCK_RSTFC; // clear reset flag
 
     // deciding jump
     if(reset_flag.bit.wdt_reset || reset_flag.bit.software_reset)
@@ -144,8 +157,8 @@ void app_main(void)
             {
                 if(bkp_struct.flags.bit.update_requested)
                 {
-                    if(bkp_struct.flags.bit.enable_can_resistor) gpio_bits_reset(CAN_RES_TRIG_GPIO_PORT, CAN_RES_TRIG_PIN);
-                    else gpio_bits_set(CAN_RES_TRIG_GPIO_PORT, CAN_RES_TRIG_PIN);
+                    if(bkp_struct.flags.bit.enable_can_resistor) gpio_bit_reset(CAN_RES_TRIG_B9_GPIO_PORT, CAN_RES_TRIG_B9_PIN);
+                    else gpio_bit_set(CAN_RES_TRIG_B9_GPIO_PORT, CAN_RES_TRIG_B9_PIN);
                     // start firmware update
                     const uint8_t source_id = bkp_struct.file_server_node_id;
                     if(source_id >= CANARD_MIN_NODE_ID && source_id <= CANARD_MAX_NODE_ID)
@@ -182,7 +195,7 @@ void app_main(void)
 
     memset(app_buffer, 0, sizeof(app_buffer));
 
-    InitCAN(CAN1);
+    InitCAN(CAN0);
 
     InitDroneCAN();
 
@@ -194,8 +207,13 @@ void app_main(void)
             ProcessDroneCAN_10KHz();
             if(timer_1ms++ >= 9)
             {
+                if(timer_1s++ >= 999)
+                {
+                    uptime_sec++;
+                    timer_1s = 0;
+                }
                 uwTick++;
-                wdt_counter_reload(); // feed the dog
+                fwdgt_counter_reload(); // feed the dog
                 ProcessDroneCAN_1KHz();
                 timer_1ms = 0;
             }
@@ -221,14 +239,14 @@ void jump_to_app(void)
     SysTick->LOAD = 0;
     SysTick->VAL = 0;
 
-    // Disable USART1, CAN1, GPIOx
-    usart_reset(USART1);
-    can_reset(CAN1);
-    gpio_reset(GPIOA);
-    gpio_reset(GPIOB);
-    gpio_reset(GPIOC);
-    gpio_reset(GPIOD);
-    gpio_reset(GPIOE);
+    // Disable USART1, CAN0, GPIOx
+    usart_deinit(USART0);
+    can_deinit(CAN0);
+    gpio_deinit(GPIOA);
+    gpio_deinit(GPIOB);
+    gpio_deinit(GPIOC);
+    gpio_deinit(GPIOD);
+    gpio_deinit(GPIOE);
 
     // Disable all enabled interrupts
     for(uint8_t i = 0; i < 8; ++i)

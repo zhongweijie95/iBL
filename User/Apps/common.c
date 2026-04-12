@@ -1,5 +1,4 @@
 #include "global_include.h"
-#include "wk_system.h"
 
 uint8_t dec_to_hex_byte(const uint8_t dec)
 {
@@ -9,14 +8,18 @@ uint8_t dec_to_hex_byte(const uint8_t dec)
     return (tens << 4) | units;
 }
 
+volatile uint32_t uptime_sec;
+
 uint32_t GetUptimeSeconds(void)
 {
-    return rtc_counter_get();
+    return uptime_sec;
 }
 
 volatile uint32_t uwTick;
 
 volatile uint8_t timer_1ms;
+
+volatile uint16_t timer_1s;
 
 volatile uint8_t timer_10khz;
 
@@ -27,11 +30,10 @@ uint32_t GetCurrentTickCount(void)
 
 uint32_t GetSerialNumber(void)
 {
-#if defined(AT32F403Axx) || defined(AT32F407xx)
-#define FLASH_SIZE_BASE 0x1FFFF7E0
-#define UID_BASE_1      0x1FFFF7E8
-#define UID_BASE_2      0x1FFFF7EC
-#define UID_BASE_3      0x1FFFF7F0
+#if defined(GD32G5X3)
+#define UID_BASE_1      0x1FFFB3E8
+#define UID_BASE_2      0x1FFFB3EC
+#define UID_BASE_3      0x1FFFB3F0
     const uint8_t *p = (const uint8_t *)UID_BASE_1;
     return ((uint32_t)p[10]<<24) | ((uint32_t)p[1]<<8) | p[0]
         | (((p[9]&0x80)|((p[4]&0x03)<<5)|((p[3]&0xF0)>>3)|(p[2]&0x01))<<16);

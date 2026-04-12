@@ -3,15 +3,12 @@
 #include <stddef.h>
 
 #include "stdint.h"
-#include "at32f403a_407_wk_config.h"
-#include "wk_debug.h"
-#include "wk_gpio.h"
-#include "wk_system.h"
+#include "gd32g5x3_init.h"
 
 #include "func_ret_code.h"
 #include "at32wk_bkp_struct.h"
 #include "can_handler.h"
-#include "../nvm/at32wk_nvm_address.h"
+#include "../nvm/gd32_nvm_address.h"
 
 typedef union reset_flag_t
 {
@@ -60,6 +57,8 @@ int DAY(void);
 int HOUR(void);
 int MINUTE(void);
 
+extern volatile uint32_t uptime_sec;
 extern volatile uint32_t uwTick;
 extern volatile uint8_t timer_1ms;
+extern volatile uint16_t timer_1s;
 extern volatile uint8_t timer_10khz;

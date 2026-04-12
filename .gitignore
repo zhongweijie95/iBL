@@ -1,4 +1,3 @@
 .idea/**
-build/**
+cmake-build-relwithdebinfo/**
 middlewares/**
-AT32F403AxG_FLASH.ld

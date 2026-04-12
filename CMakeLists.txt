@@ -1,27 +1,20 @@
 cmake_minimum_required(VERSION 3.22)
 
-#
-# User is free to modify the file as much as necessary
-#
-
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
+    #    set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-# Set the project name
-set(CMAKE_PROJECT_NAME AT32F403A_BL)
+set(CMAKE_PROJECT_NAME GD32G553_BL)
 
-# Include toolchain file
-include("cmake/gcc-arm-none-eabi.cmake")
+include(${CMAKE_SOURCE_DIR}/gcc-arm-none-eabi.cmake)
 
-# Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Core project settings
@@ -34,14 +27,9 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
-# Add at32_workbench generated sources
-add_subdirectory(cmake/at32_workbench)
+add_subdirectory(cmake)
 
 ### USER DEFINED AREA
-
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-        IFOC_NODE_NAME="com.ifoc.bootloader"
-)
 
 MACRO(HEADER_DIRECTORIES return_list)
     FILE(GLOB_RECURSE new_list User/*.h User/*.hpp)
@@ -54,52 +42,42 @@ MACRO(HEADER_DIRECTORIES return_list)
     SET(${return_list} ${dir_list})
 ENDMACRO()
 
-# CPU
-set(CPU "-mcpu=cortex-m4")
-# FPU
-set(FPU "-mfpu=fpv4-sp-d16")
-# float-abi
-set(FLOAT-ABI "-mfloat-abi=hard")
-# MCU
-set(MCU "${CPU} -mthumb ${FPU} ${FLOAT-ABI}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MCU} -fsingle-precision-constant -flto -ffast-math")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MCU} -fsingle-precision-constant -flto -ffast-math")
 
-# Optimization (switch -Ox at CMAKE PROFILES!)
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MCU} -flto")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MCU} -flto")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MCU} -fsingle-precision-constant")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MCU} -fsingle-precision-constant")
-
-# Add additional flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -ffunction-sections -fdata-sections")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti -fno-threadsafe-statics")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti -fno-threadsafe-statics -ffunction-sections -fdata-sections")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-volatile")
 
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -specs=nosys.specs")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections")
 
 # User Sources and headers
-file(GLOB_RECURSE src User/*.cpp User/*.c)
-file(GLOB_RECURSE headers User/*.h User/*.hpp)
+file(GLOB_RECURSE src User/*.c)
+file(GLOB_RECURSE headers User/*.h)
 
 HEADER_DIRECTORIES(header_dir_list)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${header_dir_list})
+
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${src} ${headers})
 
 # elf -> bin with arm-none-eabi-objcopy
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
         COMMAND arm-none-eabi-size --format=berkeley "${CMAKE_PROJECT_NAME}.elf"
         COMMAND ${CMAKE_OBJCOPY} -O binary ${CMAKE_PROJECT_NAME}.elf ${CMAKE_PROJECT_NAME}.bin)
-
 ### USER DEFINED AREA
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
+
 )
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-        ${src}
-        ${headers}
+    ${src}
+    ${headers}
 )
 
 # Add include paths
@@ -114,7 +92,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    at32_workbench
+    gd32
 
     # Add user defined libraries
 )
